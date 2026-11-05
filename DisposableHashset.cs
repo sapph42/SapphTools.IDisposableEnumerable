@@ -25,18 +25,12 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
         _set = new(capacity, comparer);
         HasOwnership = hasOwnership;
     }
-    public DisposableHashset(IEnumerable<T> collection) : this(collection, null, true) { }
     public DisposableHashset(IEnumerable<T> collection, bool hasOwnership) : this(collection, null, hasOwnership) { }
-    public DisposableHashset(IEnumerable<T> collection, IEqualityComparer<T>? comparer) : this(collection, comparer, true) { }
     public DisposableHashset(IEnumerable<T> collection, IEqualityComparer<T>? comparer, bool hasOwnership) : this(hasOwnership) {
         _set = new(collection, comparer);
     }
-    public DisposableHashset(IDisposableEnumerable<T> collection) : 
-        this(collection, null, collection.HasOwnership) { }
     public DisposableHashset(IDisposableEnumerable<T> collection, bool hasOwnership) : 
         this(collection, null, hasOwnership) { }
-    public DisposableHashset(IDisposableEnumerable<T> collection, IEqualityComparer<T>? comparer) : 
-        this(collection, comparer, collection.HasOwnership) { }
     public DisposableHashset(IDisposableEnumerable<T> collection, IEqualityComparer<T>? comparer, bool hasOwnership) {
         _set = new((IEnumerable<T>)collection, comparer);
         HasOwnership = hasOwnership;

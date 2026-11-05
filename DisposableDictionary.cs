@@ -40,17 +40,13 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
         _dictionary = new(capacity, comparer);
         HasOwnership = hasOwnership;
     }
-    public DisposableDictionary(IDictionary<TKey, TValue> dictionary) : this(dictionary, null, true) { }
-    public DisposableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer) : 
-        this(dictionary, comparer, true) { }
+    public DisposableDictionary(IDictionary<TKey, TValue> dictionary, bool hasOwnership) : this(dictionary, null, hasOwnership) { }
     public DisposableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer, bool hasOwnership) {
         _dictionary = new(dictionary, comparer);
         HasOwnership = hasOwnership;
     }
-    public DisposableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection) : 
-        this(collection, null, true) { }
-    public DisposableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer) : 
-        this(collection, comparer, true) {    }
+    public DisposableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, bool hasOwnership) : 
+        this(collection, null, hasOwnership) { }
     public DisposableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer, bool hasOwnership) {
         _dictionary = new(collection, comparer);
         HasOwnership = hasOwnership;
