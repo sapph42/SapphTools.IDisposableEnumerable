@@ -159,7 +159,7 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
     private void IntersectWithHashSetWithSameComparer(HashSet<T> other) {
         List<T> list = [.._set];
         foreach (T item in list) {
-            if (!other.Contains(item, _set.Comparer)) {
+            if (!other.Contains(item)) {
                 Remove(item);
             }
         }
