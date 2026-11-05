@@ -1,14 +1,17 @@
 ﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SapphTools.IDisposableEnumerable; 
 public class DisposableList<T> : IList<T>, IDisposableEnumerable<T> 
         where T : IDisposable {
     private bool disposedValue;
     private readonly List<T> _list;
+    private static readonly ReferenceComparer<T> ReferenceComparer = new();
 
     public int Count => _list.Count;
     public bool HasOwnership { get; init; }
     public bool IsReadOnly => false;
+    public bool IsDisposed => disposedValue;
 
     public T this[int index] {
         get => _list[index];
@@ -16,9 +19,7 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
             if (ReferenceEquals(_list[index], value)) {
                 return;
             }
-            if (_list[index] is not null) {
-                Remove(_list[index]);
-            }
+            _list[index]?.Dispose();
             _list[index] = value;
         }
     }
@@ -37,8 +38,16 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         HasOwnership = hasOwnership;
         _list = [.. collection];
     }
-    public void Add(T item) => _list.Add(item);
+    public void Add(T item) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
+        _list.Add(item);
+    }
     public void Clear() {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (HasOwnership) {
             foreach (T item in _list) {
                 item.Dispose();
@@ -50,11 +59,22 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
     public void CopyTo(T[] array) => _list.CopyTo(array);
     public void CopyTo(T[] array, int arrayIndex) => _list.CopyTo(array, arrayIndex);
     public void CopyTo(int index, T[] array, int arrayIndex, int count) => _list.CopyTo(index, array, arrayIndex, count);
-    public DisposableList<T> GetRange(int index, int count, bool giveOwnership = false) =>
-        new(_list.GetRange(index, count), giveOwnership);
+    public DisposableList<T> GetRange(int index, int count) =>
+        new(_list.GetRange(index, count), false);
     public int IndexOf(T item) => _list.IndexOf(item);
+    public int IndexOf(T item, IEqualityComparer<T> comparer) {
+        for (int i = 0; i < _list.Count; i++) {
+            if (comparer.Equals(_list[i], item)) {
+                return i;
+            }
+        }
+        return -1;
+    }
     public void Insert(int index, T item) => _list.Insert(index, item);
     public bool Remove(T item) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (_list.Remove(item)) {
             if (HasOwnership) {
                 item.Dispose();
@@ -63,7 +83,21 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         }
         return false;
     }
+    public bool Remove(T item, IEqualityComparer<T> comparer) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
+        int index = IndexOf(item, comparer);
+        if (index < 0) {
+            return false;
+        }
+        RemoveAt(index);
+        return true;
+    }
     public int RemoveAll(Predicate<T> match) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         ArgumentNullException.ThrowIfNull(match, nameof(match));
         if (!HasOwnership) {
             return _list.RemoveAll(match);
@@ -75,11 +109,14 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
             }
         }
         foreach (T item in toRemove) {
-            Remove(item);
+            Remove(item, ReferenceComparer);
         }
         return toRemove.Count;
     }
     public void RemoveAt(int index) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         T item = _list[index];
         _list.RemoveAt(index);
         if (HasOwnership) {
@@ -93,16 +130,14 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         }
         List<T> toRemove = _list.GetRange(index, count);
         foreach (T item in toRemove) {
-            Remove(item);
+            Remove(item, ReferenceComparer);
         }
     }
 
     protected virtual void Dispose(bool disposing) {
         if (!disposedValue) {
             if (disposing) {
-                foreach (T item in this) {
-                    try { item.Dispose(); } catch { }
-                }
+                Clear();
             }
             disposedValue = true;
         }
@@ -111,10 +146,6 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
-    public IEnumerator<T> GetEnumerator() {
-        throw new NotImplementedException();
-    }
-    IEnumerator IEnumerable.GetEnumerator() {
-        return GetEnumerator();
-    }
+    public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => _list.GetEnumerator();
 }

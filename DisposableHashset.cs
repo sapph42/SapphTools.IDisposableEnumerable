@@ -14,6 +14,7 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
     public int Count => _set.Count;
     public bool HasOwnership { get; init; }
     public bool IsReadOnly => false;
+    public bool IsDisposed => disposedValue;
 
     public DisposableHashset() : this(0, null, true) { }
     public DisposableHashset(bool hasOwnership) : this(0, null, hasOwnership) { }
@@ -36,8 +37,16 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
         HasOwnership = hasOwnership;
     }
 
-    public bool Add(T item) => _set.Add(item);
+    public bool Add(T item) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
+        return _set.Add(item);
+    }
     public void Clear() {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (HasOwnership) {
             foreach (T item in _set) {
                 item.Dispose();
@@ -48,8 +57,12 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
     public bool Contains(T item) => _set.Contains(item);
     public void CopyTo(T[] array, int arrayIndex) => _set.CopyTo(array, arrayIndex);
     public void ExceptWith(IEnumerable<T> other) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (!HasOwnership) {
             _set.ExceptWith(other);
+            return;
         }
         ArgumentNullException.ThrowIfNull(nameof(other));
         if (_set.Count == 0) {
@@ -70,8 +83,12 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
         }
     }
     public void IntersectWith(IEnumerable<T> other) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (!HasOwnership) {
             _set.IntersectWith(other);
+            return;
         }
         ArgumentNullException.ThrowIfNull(nameof(other));
         if (other == this || other == _set || _set.Count == 0) {
@@ -97,6 +114,9 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
     public bool IsSupersetOf(IEnumerable<T> other) => _set.IsSupersetOf(other);
     public bool Overlaps(IEnumerable<T> other) => _set.Overlaps(other);
     public bool Remove(T item) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (!HasOwnership) {
             return _set.Remove(item);
         }
@@ -108,12 +128,17 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
     }
     public bool SetEquals(IEnumerable<T> other) => _set.SetEquals(other);
     public void SymmetricExceptWith(IEnumerable<T> other) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (!HasOwnership) {
             _set.SymmetricExceptWith(other);
+            return;
         }
         ArgumentNullException.ThrowIfNull(nameof(other));
         if (_set.Count == 0) {
             UnionWith(other);
+            return;
         }
         if (other == this || other == _set) {
             Clear();
@@ -165,9 +190,7 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
     protected virtual void Dispose(bool disposing) {
         if (!disposedValue) {
             if (disposing) {
-                foreach (T item in this) {
-                    try { item.Dispose(); } catch { }
-                }
+                Clear();
             }
             disposedValue = true;
         }
@@ -176,10 +199,6 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
-    public IEnumerator<T> GetEnumerator() {
-        return ((IEnumerable<T>)_set).GetEnumerator();
-    }
-    IEnumerator IEnumerable.GetEnumerator() {
-        return ((IEnumerable)_set).GetEnumerator();
-    }
+    public IEnumerator<T> GetEnumerator() => _set.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => _set.GetEnumerator();
 }

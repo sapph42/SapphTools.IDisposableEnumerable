@@ -13,6 +13,7 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
     public ICollection<TValue> Values => _dictionary.Values;
     public int Count => ((ICollection<KeyValuePair<TKey, TValue>>)_dictionary).Count;
     public bool IsReadOnly => ((ICollection<KeyValuePair<TKey, TValue>>)_dictionary).IsReadOnly;
+    public bool IsDisposed => disposedValue;
 
     public TValue this[TKey key] {
         get => _dictionary[key];
@@ -22,9 +23,6 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
                     return;
                 }
                 Remove(key);
-                if (HasOwnership) {
-                    val.Dispose();
-                }
             }
             Add(key, value);
         }
@@ -53,11 +51,21 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
     }
 
     public void Add(TKey key, TValue value) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         _dictionary.Add(key, value);
     }
-    public void Add(KeyValuePair<TKey, TValue> item) =>
+    public void Add(KeyValuePair<TKey, TValue> item) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         ((ICollection<KeyValuePair<TKey, TValue>>)_dictionary).Add(item);
+    }
     public void Clear() {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (HasOwnership) {
             foreach (TKey key in Keys) {
                 this[key].Dispose();
@@ -74,6 +82,9 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
         ((ICollection<KeyValuePair<TKey, TValue>>)_dictionary).CopyTo(array, arrayIndex);
     }
     public bool Remove(TKey key) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (TryGetValue(key, out TValue? val)) {
             if (_dictionary.Remove(key)) {
                 if (HasOwnership) {
@@ -88,8 +99,14 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
         }
     }
     public bool Remove(KeyValuePair<TKey, TValue> item) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
+        if (!TryGetValue(item.Key, out TValue? val)) {
+            return false;
+        }
         if (_dictionary.Remove(item.Key)) {
-            if (HasOwnership) {
+            if (HasOwnership && val.Equals(item.Value)) {
                 item.Value.Dispose();
             }
             return true;
@@ -100,22 +117,12 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
         return _dictionary.TryGetValue(key, out value);
     }
 
-    public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() {
-        return ((IEnumerable<KeyValuePair<TKey, TValue>>)_dictionary).GetEnumerator();
-    }
-    IEnumerator IEnumerable.GetEnumerator() {
-        return ((IEnumerable)_dictionary).GetEnumerator();
-    }
-
+    public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => _dictionary.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => _dictionary.GetEnumerator();
 
     protected virtual void Dispose(bool disposing) {
         if (!disposedValue) {
             if (disposing) {
-                if (HasOwnership) {
-                    foreach (TValue item in Values) {
-                        try { item.Dispose(); } catch { }
-                    }
-                }
                 Clear();
             }
             disposedValue = true;
