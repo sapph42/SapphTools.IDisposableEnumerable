@@ -19,7 +19,7 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
             if (ReferenceEquals(_list[index], value)) {
                 return;
             }
-            _list[index]?.Dispose();
+            DisposeOwnedItem(_list[index]);
             _list[index] = value;
         }
     }
@@ -50,7 +50,7 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         }
         if (HasOwnership) {
             foreach (T item in _list) {
-                item.Dispose();
+                DisposeOwnedItem(item);
             }
         }
         _list.Clear();
@@ -75,13 +75,14 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         if (disposedValue) {
             throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
         }
-        if (_list.Remove(item)) {
-            if (HasOwnership) {
-                item.Dispose();
-            }
-            return true;
+        int index = IndexOf(item);
+        if (index < 0) {
+            return false;
         }
-        return false;
+        T listItem = _list[index];
+        RemoveAt(index);
+        DisposeOwnedItem(listItem);
+        return true;
     }
     public bool Remove(T item, IEqualityComparer<T> comparer) {
         if (disposedValue) {
@@ -119,9 +120,7 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         }
         T item = _list[index];
         _list.RemoveAt(index);
-        if (HasOwnership) {
-            item.Dispose();
-        }
+        DisposeOwnedItem(item);
     }
     public void RemoveRange(int index, int count) {
         if (!HasOwnership) {
@@ -129,9 +128,17 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
             return;
         }
         List<T> toRemove = _list.GetRange(index, count);
+        _list.RemoveRange(index, count);
         foreach (T item in toRemove) {
-            Remove(item, ReferenceComparer);
+            DisposeOwnedItem(item);
         }
+    }
+
+    private void DisposeOwnedItem(T? item) {
+        if (item is null || !HasOwnership) {
+            return;
+        }
+        try { item.Dispose(); } catch { }
     }
 
     protected virtual void Dispose(bool disposing) {

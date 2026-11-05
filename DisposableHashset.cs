@@ -47,10 +47,8 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
         if (disposedValue) {
             throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
         }
-        if (HasOwnership) {
-            foreach (T item in _set) {
-                item.Dispose();
-            }
+        foreach (T item in _set) {
+            DisposeOwnedItem(item);
         }
         _set.Clear();
     }
@@ -64,7 +62,7 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
             _set.ExceptWith(other);
             return;
         }
-        ArgumentNullException.ThrowIfNull(nameof(other));
+        ArgumentNullException.ThrowIfNull(other, nameof(other));
         if (_set.Count == 0) {
             return;
         }
@@ -90,7 +88,7 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
             _set.IntersectWith(other);
             return;
         }
-        ArgumentNullException.ThrowIfNull(nameof(other));
+        ArgumentNullException.ThrowIfNull(other, nameof(other));
         if (other == this || other == _set || _set.Count == 0) {
             return;
         }
@@ -117,11 +115,9 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
         if (disposedValue) {
             throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
         }
-        if (!HasOwnership) {
-            return _set.Remove(item);
-        }
-        if (_set.Remove(item)) {
-            item.Dispose();
+        if (_set.TryGetValue(item, out T? setItem)) {
+            _set.Remove(setItem);
+            DisposeOwnedItem(setItem);
             return true;
         }
         return false;
@@ -135,7 +131,7 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
             _set.SymmetricExceptWith(other);
             return;
         }
-        ArgumentNullException.ThrowIfNull(nameof(other));
+        ArgumentNullException.ThrowIfNull(other,nameof(other));
         if (_set.Count == 0) {
             UnionWith(other);
             return;
@@ -156,6 +152,12 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
 
     internal static bool EqualityComparersAreEqual(HashSet<T> set1, HashSet<T> set2) => set1.Comparer.Equals(set2.Comparer);
 
+    private void DisposeOwnedItem(T? item) {
+        if (item is null || !HasOwnership) {
+            return;
+        }
+        try { item.Dispose(); } catch { }
+    }
     private void IntersectWithHashSetWithSameComparer(HashSet<T> other) {
         List<T> list = [.._set];
         foreach (T item in list) {
@@ -178,7 +180,7 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
     private void SymmetricExceptWithUniqueHashSet(HashSet<T> other) {
         foreach (T item in other) {
             if (Remove(item)) {
-                item.Dispose();
+                DisposeOwnedItem(item);
             } else {
                 Add(item);
             }
