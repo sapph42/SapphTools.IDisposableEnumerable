@@ -92,21 +92,12 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
         if (other == this || other == _set || _set.Count == 0) {
             return;
         }
-        if (other is ICollection<T> otherAsCollection) {
-            if (otherAsCollection.Count == 0) {
-                Clear();
-                return;
-            }
-            if (other is HashSet<T> otherAsHash && EqualityComparersAreEqual(_set, otherAsHash)) {
-                IntersectWithHashSetWithSameComparer(otherAsHash);
-            } else if (other is DisposableHashset<T> otherAsDHash && EqualityComparersAreEqual(_set, otherAsDHash._set)) {
-                IntersectWithHashSetWithSameComparer(otherAsDHash._set);
-            } else {
-                IntersectWithEnumerable(other);
-            }
-        } else {
-            IntersectWithEnumerable(other);
+        HashSet<T> set = new(other, _set.Comparer);
+        if (set.Count == 0) {
+            Clear();
+            return;
         }
+        IntersectWithHashSetWithSameComparer(set);
     }
     public bool IsProperSubsetOf(IEnumerable<T> other) => _set.IsProperSubsetOf(other);
     public bool IsProperSupersetOf(IEnumerable<T> other) => _set.IsProperSupersetOf(other);
@@ -173,23 +164,13 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
             }
         }
     }
-    private void IntersectWithEnumerable(IEnumerable<T> other) {
-        List<T> list = [.._set];
-        foreach (T item in list) {
-            if (!other.Contains(item, _set.Comparer)) {
-                Remove(item);
-            }
-        }
-    }
     private void SymmetricExceptWithEnumerable(IEnumerable<T> other) {
         HashSet<T> otherHash = new(other, _set.Comparer);
         SymmetricExceptWithUniqueHashSet(otherHash);
     }
     private void SymmetricExceptWithUniqueHashSet(HashSet<T> other) {
         foreach (T item in other) {
-            if (Remove(item)) {
-                DisposeOwnedItem(item);
-            } else {
+            if (!Remove(item)) {
                 Add(item);
             }
         }
