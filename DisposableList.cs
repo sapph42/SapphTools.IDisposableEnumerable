@@ -16,6 +16,9 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
     public T this[int index] {
         get => _list[index];
         set {
+            if (disposedValue) {
+                throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+            }
             if (ReferenceEquals(_list[index], value)) {
                 return;
             }
@@ -70,7 +73,12 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         }
         return -1;
     }
-    public void Insert(int index, T item) => _list.Insert(index, item);
+    public void Insert(int index, T item) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
+        _list.Insert(index, item);
+    }
     public bool Remove(T item) {
         if (disposedValue) {
             throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
@@ -81,7 +89,6 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         }
         T listItem = _list[index];
         RemoveAt(index);
-        DisposeOwnedItem(listItem);
         return true;
     }
     public bool Remove(T item, IEqualityComparer<T> comparer) {
@@ -123,6 +130,9 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         DisposeOwnedItem(item);
     }
     public void RemoveRange(int index, int count) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
         if (!HasOwnership) {
             _list.RemoveRange(index, count);
             return;

@@ -102,7 +102,7 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
             return false;
         }
         if (val.Equals(item.Value) && _dictionary.Remove(item.Key)) {
-            DisposeOwnedItem(item.Value);
+            DisposeOwnedItem(val);
             return true;
         }
         return false;

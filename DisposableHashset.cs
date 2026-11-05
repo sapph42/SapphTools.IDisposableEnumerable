@@ -104,6 +104,8 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
             } else {
                 IntersectWithEnumerable(other);
             }
+        } else {
+            IntersectWithEnumerable(other);
         }
     }
     public bool IsProperSubsetOf(IEnumerable<T> other) => _set.IsProperSubsetOf(other);
@@ -148,7 +150,12 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
             SymmetricExceptWithEnumerable(other);
         }
     }
-    public void UnionWith(IEnumerable<T> other) => _set.UnionWith(other);
+    public void UnionWith(IEnumerable<T> other) {
+        if (disposedValue) {
+            throw IDisposableEnumerable.DisposedMutationEx(GetType().Name);
+        }
+        _set.UnionWith(other);
+    }
 
     internal static bool EqualityComparersAreEqual(HashSet<T> set1, HashSet<T> set2) => set1.Comparer.Equals(set2.Comparer);
 
@@ -167,7 +174,8 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
         }
     }
     private void IntersectWithEnumerable(IEnumerable<T> other) {
-        foreach (T item in other) {
+        List<T> list = [.._set];
+        foreach (T item in list) {
             if (!other.Contains(item, _set.Comparer)) {
                 Remove(item);
             }
@@ -187,7 +195,7 @@ public class DisposableHashset<T> : ISet<T>, IDisposableEnumerable<T>
         }
     }
 
-    void ICollection<T>.Add(T item) => _set.Add(item);
+    void ICollection<T>.Add(T item) => Add(item);
 
     protected virtual void Dispose(bool disposing) {
         if (!disposedValue) {
