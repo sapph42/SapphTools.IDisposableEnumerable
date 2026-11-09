@@ -71,6 +71,14 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
         }
         _dictionary.Clear();
     }
+    public DisposableDictionary<TKey, TValue> Clone(bool transferOwnership = false) {
+        bool newOwnership = HasOwnership && transferOwnership;
+        DisposableDictionary<TKey, TValue> clone = new(_dictionary, _dictionary.Comparer, newOwnership);
+        if (newOwnership) {
+            HasOwnership = false;
+        }
+        return clone;
+    }
     public bool Contains(KeyValuePair<TKey, TValue> item) =>
         ((ICollection<KeyValuePair<TKey, TValue>>)_dictionary).Contains(item);
     public bool ContainsKey(TKey key) {
