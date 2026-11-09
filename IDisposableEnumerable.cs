@@ -8,5 +8,5 @@ public interface IDisposableEnumerable<out T> : IEnumerable, IDisposableEnumerab
 public interface IDisposableEnumerable : IDisposable {
     bool IsDisposed { get; }
     static ObjectDisposedException DisposedMutationEx(string objectName) =>
-        new(nameof(objectName), "Attempted to mutate a disposed IDisposedEnumerable object.");
+        new(objectName, "Attempted to mutate a disposed IDisposedEnumerable object.");
 }
