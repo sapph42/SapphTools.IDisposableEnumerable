@@ -87,7 +87,6 @@ public class DisposableList<T> : IList<T>, IDisposableEnumerable<T>
         if (index < 0) {
             return false;
         }
-        T listItem = _list[index];
         RemoveAt(index);
         return true;
     }
