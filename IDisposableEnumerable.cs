@@ -3,7 +3,7 @@
 namespace SapphTools.IDisposableEnumerable; 
 public interface IDisposableEnumerable<out T> : IEnumerable, IDisposableEnumerable
     where T : IDisposable {
-    bool HasOwnership { get; }
+    bool HasOwnership { get; init; }
 }
 public interface IDisposableEnumerable : IDisposable {
     bool IsDisposed { get; }
