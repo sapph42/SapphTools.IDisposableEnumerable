@@ -8,7 +8,7 @@ public class DisposableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDi
     private bool disposedValue;
     private readonly Dictionary<TKey, TValue> _dictionary;
 
-    public bool HasOwnership { get; init; }
+    public bool HasOwnership { get; private set; }
     public ICollection<TKey> Keys => _dictionary.Keys;
     public ICollection<TValue> Values => _dictionary.Values;
     public int Count => ((ICollection<KeyValuePair<TKey, TValue>>)_dictionary).Count;
